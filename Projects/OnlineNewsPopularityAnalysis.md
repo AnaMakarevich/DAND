@@ -3,8 +3,9 @@ Introduction. Dataset Overview
 
 In this work I will be analysing popularity of online news, specifically
 - what features can possibly help us to predict the number of shares?
+
 The source dataset can be downloaded from UCI repository: [see
-here](#'http://archive.ics.uci.edu/ml/datasets/Online+News+Popularity').
+here](http://archive.ics.uci.edu/ml/datasets/Online+News+Popularity).
 
 This dataset contains information about the articles published on
 Mashable.com during a two-year period. Popularity is measured by the
@@ -121,7 +122,7 @@ News Topics
 -----------
 
     ## Topic 1 Topic 2 Topic 3 Topic 4 Topic 5 
-    ##    6590    4259    8113    7602    8539
+    ##    6587    4256    8113    7601    8546
 
 <img src="Figs/topics_plot-1.png" style="display: block; margin: auto;" />
 
@@ -175,7 +176,7 @@ Let’s actually look at the titles with supposedly no content:
 
 And, surprisingly, they still get a lot of shares! There must be
 something wrong. Let’s check one news article from this list -
-[http://mashable.com/2013/01/23/fitness-gadget-gym-cost-comparison/](#'http://mashable.com/2013/01/23/fitness-gadget-gym-cost-comparison/').
+<http://mashable.com/2013/01/23/fitness-gadget-gym-cost-comparison/>.
 Turns out, it contains a lot text and a lof images! We can conclude that
 these observations might be corrupted! Do those with no text really have
 no text then? Let’s see:
@@ -777,18 +778,17 @@ References
 ==========
 
 -   [Online News Popularity
-    Dataset](#'http://archive.ics.uci.edu/ml/datasets/Online+News+Popularity')
+    Dataset](http://archive.ics.uci.edu/ml/datasets/Online+News+Popularity)
 -   [Chaning the Order of Levels of a
-    Factor](#'http://www.cookbook-r.com/Manipulating_data/Changing_the_order_of_levels_of_a_factor/')
+    Factor](http://www.cookbook-r.com/Manipulating_data/Changing_the_order_of_levels_of_a_factor/)
 -   [Difference between Subjectivity and
-    Polarity](#'https://www.quora.com/What-is-the-difference-between-Polarity-and-Subjectivity')
+    Polarity](https://www.quora.com/What-is-the-difference-between-Polarity-and-Subjectivity)
 -   [What is good explanation of Dirichlet
-    Allocation?](#'https://www.quora.com/What-is-a-good-explanation-of-Latent-Dirichlet-Allocation')
+    Allocation?](https://www.quora.com/What-is-a-good-explanation-of-Latent-Dirichlet-Allocation)
 -   [Converting data between wide and long
-    format](#'http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/')
--   [Rename columns in
-    R](#'http://rprogramming.net/rename-columns-in-r/')
+    format](http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/)
+-   [Rename columns in R](http://rprogramming.net/rename-columns-in-r/)
 -   [Plot some variables against many
-    others](#'https://drsimonj.svbtle.com/plot-some-variables-against-many-others')
+    others](https://drsimonj.svbtle.com/plot-some-variables-against-many-others)
 -   [How to change legend in
-    ggplot](#'https://stackoverflow.com/questions/14622421/how-to-change-legend-title-in-ggplot#14622513')
+    ggplot](https://stackoverflow.com/questions/14622421/how-to-change-legend-title-in-ggplot#14622513)
