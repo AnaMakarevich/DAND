@@ -14,7 +14,7 @@ Introductory project. The dataset contains global and local average temerature b
 
 This project is inspired by one of the Udacity's lectures where the instructor shared an observation that if we keep clicking the first link on any Wikipedia page, we will end up at an article about Philosophy. I tried to reproduce that result. 
 
-## Project 2: Bikeshare Analysis
+## Project 2: Bikeshare Analysis
 [link](https://github.com/AnaMakarevich/DAND/blob/master/Projects/Project_2_BikeShareAnalysis/Bike_Share_Analysis.md)
 
 This is guided analysis implemented in a question-answer format. The questions were provided by Udacity. The goal of the project is to perform EDA on the bikeshare data provided by bike-share system provider [Motivate](https://www.motivateco.com/), specifically: compare system usage in New York City, Chicago, and Washington, DC
