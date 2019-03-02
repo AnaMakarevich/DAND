@@ -82,22 +82,7 @@ df.head(3)
 
 
 
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -171,9 +156,6 @@ df.head(3)
     </tr>
   </tbody>
 </table>
-</div>
-
-
 
 
 ```python
@@ -222,21 +204,7 @@ df.describe()
 
 
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -350,8 +318,6 @@ df.describe()
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 We might notice a very weird thing here - there is age -1. We expect that age is strictly positive number. If we check the dataset, we will see that there is only one record with age -1. It looks more like a human error so we should drop this row. 
@@ -364,21 +330,7 @@ df[df.Age==-1]
 
 
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -418,9 +370,6 @@ df[df.Age==-1]
     </tr>
   </tbody>
 </table>
-</div>
-
-
 
 <a id="cleaning"></a>
 ### Data Cleaning
@@ -487,21 +436,8 @@ df[df.DaysBetween<0][['ScheduledDay','AppointmentDay','DaysBetween']]
 
 
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
 
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -543,8 +479,6 @@ df[df.DaysBetween<0][['ScheduledDay','AppointmentDay','DaysBetween']]
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 
@@ -627,22 +561,7 @@ df.describe()
 
 
 
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -738,8 +657,6 @@ df.describe()
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 Some observations: 
@@ -1093,21 +1010,8 @@ no_show_rate
 
 
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
 
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -1153,10 +1057,6 @@ no_show_rate
     </tr>
   </tbody>
 </table>
-</div>
-
-
-
 
 ```python
 bar_plot_by_index(no_show_rate, 'counts')
@@ -1254,22 +1154,7 @@ young_alco.groupby('PatientId').agg({'AppointmentID': 'count', 'Neighbourhood':'
 
 
 
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -1395,8 +1280,6 @@ young_alco.groupby('PatientId').agg({'AppointmentID': 'count', 'Neighbourhood':'
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 <b>Although we're not interested in specific cases for the data analysis purposes</b>, in this case it was interesting to look at that. We <b> can't</b> draw any conclusions from that but we should note that outlier and maybe take some action if possible (i.e. if the provider of the dataset can contact the family of this boy).
@@ -1414,21 +1297,7 @@ special_patient[['ScheduledDay','AppointmentDay','No-show','SMS_received','DaysB
 
 
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -1498,8 +1367,6 @@ special_patient[['ScheduledDay','AppointmentDay','No-show','SMS_received','DaysB
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 As we can see, there were total 7 appointments for that patient in May and June. He never showed up. All the appointments were scheduled on that same date. However, we can't even say that boy never actually visited the doctor. The maximum date for this dataset is June, 8, 2016. 
