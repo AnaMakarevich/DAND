@@ -1,0 +1,1012 @@
+---
+title: "Online News Popularity Analysis"
+author: "Anastasia Makarevich"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    # theme of html document
+    # theme of code highlight                                 
+    # table of contents
+    theme       : journal            # "default", "cerulean", "journal",
+                                    # "flatly", "readable", "spacelab",
+                                    # "united", "cosmo", "lumen", "paper", 
+                                    # "sandstone", "simplex", "yeti"
+    highlight   : tango          # "default", "tango", "pygments",
+                                    # "kate",  "monochrome", "espresso",
+                                    # "zenburn", "haddock", "textmate"
+    toc         : true              # get table of content
+    toc_depth   : 3
+    toc_float   : true
+    df_print    : paged
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages
+
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(gridExtra)
+library(reshape2)
+library(GGally)
+library(scales)
+
+# knitr: Suppress code/messages/warnings 
+#        Set default plot options and center them
+knitr::opts_chunk$set(fig.width=9,fig.height=5,fig.path='Figs/',
+                      fig.align='center',tidy=TRUE,
+                      echo=FALSE,warning=FALSE,message=FALSE)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, constants}
+# set constants for colours
+MAIN_COLOUR <- "royalblue4"
+FILL_COLOUR <- "whitesmoke"
+```
+
+# Introduction. Dataset Overview
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, data_loading}
+# Load the Data
+news_raw <- read.csv('OnlineNewsPopularity/OnlineNewsPopularity.csv')
+```
+
+In this work I will be analysing popularity of online news, specifically - what features can possibly help us to predict the number of shares? The source dataset can be downloaded from UCI repository: [see here](#'http://archive.ics.uci.edu/ml/datasets/Online+News+Popularity').
+
+This dataset contains information about the articles published on Mashable.com during a two-year period. Popularity is measured by the number of shares since the publication date. An article is considered popular if it exceed the threshold of 1400 shares (as suggested by the dataset creators). 
+
+# Variables Transformation
+
+The dataset contains 39797 observations with 61 attributes - real and integers. However, conceptually the dataset contains categorical variables as well which are encoded as integers (for example, channel name and weekday name). Such encoding is very convenient for prediction models. However, for the sake of plotting we will convert the dummy variables back to categorical variables. The following new categorical variables will be created: 
+
+- weekend (one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday)  
+- channel (one of: LifeStyle, Entertainment, Business, Social Media, Tech, World, Other (if it's not in one of the channels))  
+- topic (the topic with the maximum value for Latent Dirichlet Allocation is selected, one of: Topic 1, Topic 2, Topic 3, Topic 4, Topic 5) 
+
+```{r message=FALSE, warning=FALSE, preprocess}
+# create and fill in the column for weekday 
+weekdays_names <- c('weekday_is_monday', 'weekday_is_tuesday', 
+                    'weekday_is_wednesday', 'weekday_is_thursday', 
+                    'weekday_is_friday', 'weekday_is_saturday',
+                    'weekday_is_sunday')
+weekdays <- c("Monday", 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
+              'Saturday', 'Sunday')
+# rename weekday columns
+colnames(news_raw)[colnames(news_raw) %in% weekdays_names] <- weekdays
+# create one column for weekdays
+news_raw$weekday <- factor(colnames(news_raw[weekdays])
+                           [max.col(news_raw[weekdays])], levels = weekdays)
+channel_names <- c('data_channel_is_lifestyle', 'data_channel_is_entertainment',
+                   'data_channel_is_bus', 'data_channel_is_socmed', 
+                   'data_channel_is_tech', 'data_channel_is_world')
+channels <- c('Lifestyle', 'Entertainment', 'Business',
+              'Social Media', 'Tech', 'World')
+news_raw$Other <- as.numeric(!rowSums(news_raw[channel_names]))
+# rename columns
+colnames(news_raw)[colnames(news_raw) %in% channel_names] <- channels
+# create column with topic names and convert them to ordered factor 
+news_raw$channel <- factor(colnames(news_raw[c(channels, 'Other')])
+                       [max.col(news_raw[c(channels, 'Other')])],
+                       levels = c(channels, 'Other'))
+# select topic names 
+topic_names <- c('LDA_00','LDA_01','LDA_02','LDA_03','LDA_04')
+# define news topic names
+topics <- c('Topic 1', 'Topic 2', 'Topic 3', 'Topic 4', 'Topic 5')
+# rename columns
+colnames(news_raw)[colnames(news_raw) %in% topic_names] <- topics
+# create column with topic names and convert them to ordered factor 
+news_raw$topic <- factor(colnames(news_raw[topics])[max.col(news_raw[topics])],
+                       levels = topics)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, sample}
+# remove outliers
+news <- news_raw
+# create a sample of the subset, so that plotting is faster and takes less space
+news_sample <- news[sample(1:nrow(news), 5000), ]
+```
+
+# Univariate EDA
+
+## News Examples: Best and Worst
+
+Before we dive into exploring variables, it's interesting to take a quick look  what news are the most/least readable. 
+
+### Best Stories
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, top_stories}
+# sort stories by the number of shares in decreasing order and show top 5
+head(news[order(news$shares,decreasing=T),c('url','shares','timedelta')],n=5)
+```
+
+### Worst Stories
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, worst_stories}
+# sort stories by the number of shares in increasing order and show top 5
+head(news[order(news$shares,decreasing=F),c('url','shares','timedelta')],n=5)
+```
+
+## Number of Shares
+
+Numeric Summary: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, shares_summary}
+# show statistics for shares
+summary(news$shares)
+```
+
+The distribution of the number of shares of the original data is highly skewed (right-skewed), so 
+there are two plots: the first one shows original data, the second one is without outliers (omitting values abouve Q3 + 1.5*IQR). 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, shares_distribution}
+# create histogram with all shares 
+shares <- ggplot(aes(x = shares), data=news_raw) +
+  geom_histogram(fill=FILL_COLOUR, col=MAIN_COLOUR, bins=30) +
+  theme_linedraw() +
+  xlab("Number of Shares") +
+  ylab("Counts")
+
+# create histogram for shares without outliers
+shares_no_outliers <- 
+  ggplot(aes(x = shares), data=
+           subset(news_raw, news_raw$shares < 1.5*IQR(news_raw$shares)+
+                           quantile(news_raw$shares,0.75))) +
+  geom_histogram(fill=FILL_COLOUR, col=MAIN_COLOUR, bins=30) +
+  theme_linedraw() + 
+  xlab("Number of shares (No Outliers)") + 
+  ylab("Counts")
+grid.arrange(shares, shares_no_outliers,ncol=1)
+```
+
+Since the distribution is so heavily skewed, it is reasonable to remove outliers so that we work with more balanced data. We will consider everything that is above Q3 + 1.5*IQR as an outlier. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, outliers}
+# remove outliers
+news <- subset(news_raw, news_raw$shares < 1.5*IQR(news$shares)+
+                 quantile(news$shares,0.75))
+```
+
+## Days of the Week
+
+Summary: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, weekday_summary}
+#show summary for the number of news per weekday
+summary(news$weekday)
+```
+
+
+```{r echo = FALSE, message=FALSE, warning=FALSE, weekday_plot}
+# create barplot for number of news by weekday
+ggplot(aes(x = weekday), data=news) +
+  geom_bar(fill=FILL_COLOUR, color=MAIN_COLOUR) + 
+  theme_linedraw() + 
+  xlab("Weekday") 
+```
+
+There are significantly fewer publications on weekends. We should explore if there are fewer shares on weekends as well.
+
+## News Channels
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, channel_summary}
+# show summary for number of news by channel
+summary(news$channel)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Channel_Plot}
+# create barplot for number of news by channel
+ggplot(aes(x = channel), data=news_sample) +
+  geom_bar(fill=FILL_COLOUR, color=MAIN_COLOUR) + 
+  theme_linedraw()
+```
+
+Surprisingly, Lifestyle and Social Media channels get significantly fewer publications that any other channels. Also, there is significant amoung of news not assigned to any chanel, so we should account for that.  
+
+## News Topics
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, topics_summary}
+# show summary for the number of news by topic
+summary(news$topic)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, topics_plot}
+# create barplot for the number of news by topic
+ggplot(aes(x = topic), data=news_sample) +
+    geom_bar(fill=FILL_COLOUR, color=MAIN_COLOUR) + 
+    theme_linedraw()
+```
+
+We see that Topic 2 is the least covered on Mashable, while news on Topics 4 and 5 are published more often. 
+
+## Title and Text Length
+
+The length of the text/title is measured in the number of tokens (not necessarily distinct). In the very basic case, the stop words are not excluded, so we're simply measuring text/title length with the number of words in it. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, words_summary}
+# show summary for title length and text length 
+summary(select(news,c("n_tokens_title", "n_tokens_content")))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, words_plot}
+# create histogram for the title length 
+title_length <- ggplot(aes(x=n_tokens_title), data=news) +
+  geom_histogram(bins=20, fill=FILL_COLOUR, color=MAIN_COLOUR) +
+  labs(title="Title Length (Number of\nwords in title)") + 
+  xlab("Title Length") + 
+  theme_linedraw()
+# create histogram for the text length 
+text_length <- ggplot(aes(x=n_tokens_content), data=news) +
+  geom_histogram(binwdith=200, fill=FILL_COLOUR, color=MAIN_COLOUR) +
+  labs(title ="Text Length (Number of\nwords in text)") +
+  xlab("Text Length") + 
+  theme_linedraw()
+# plot two histograms side by side
+grid.arrange(title_length, text_length, ncol=2)
+```
+
+There is one interesting thing that we can notice here. There is quite large number of news with zero number of words! Does it even make sense? 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, no_text_counts}
+# select news that contain no text
+no_text <- subset(news, news$n_tokens_content==0)
+```
+
+To be precise, there are `r nrow(no_text)` of them.  Let's see if they contain anything instead: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, no_text_characteristics}
+# count the number of news that contain videos, the number of news that contain 
+# images, the number of ntws that contain links and the number of news that 
+# contain neither
+data.frame(counts = c(sum(no_text$num_videos > 0),
+                      sum(no_text$num_imgs > 0),
+                      sum(no_text$num_hrefs > 0),
+                      sum(no_text$num_videos==0 & 
+                            no_text$num_imgs==0 &
+                            no_text$num_hrefs==0)),
+                      row.names = c("Videos", "Images", "Links", "Nothing"))
+```
+
+Looks like there are 78 news bits that don't have any content at all! Let's actually look at the titles with supposedly no content: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, no_text_sample}
+# show first 10 news with no text, no images, no links
+head(subset(no_text, no_text$num_videos==0 & 
+                            no_text$num_imgs==0 &
+                            no_text$num_hrefs==0)$url, 10)
+```
+
+And, surprisingly, they still get a lot of shares! There must be something wrong. Let's check one news article from this list - [http://mashable.com/2013/01/23/fitness-gadget-gym-cost-comparison/](#'http://mashable.com/2013/01/23/fitness-gadget-gym-cost-comparison/'). Turns out, it contains a lot text and a lof images! We can conclude that these observations might be corrupted! Do those with no text really have no text then? Let's see:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, no_text}
+# show first article that has at least one video or at least one image or 
+# at least onelink
+head(subset(no_text, no_text$num_videos>0 | 
+                            no_text$num_imgs>0 |
+                            no_text$num_hrefs>0)$url, 1)
+```
+
+[The link](#'http://mashable.com/2013/01/23/actual-facebook-graph-searches/') leads to an article named "Tumbrl Serves Up Hilariously Awful 'Actual Facebook Graph Searches'" that does have text! We can suspect, that actually these news that are reported to have zero number of words were actually parsed incorrectly. We could have written our own parser, but this is outside of the scope of this work, so we will just remove these observations from the dataset. 
+
+```{r message=FALSE, warning=FALSE, no_text_removal}
+# remove news with no text 
+news <- subset(news, news$n_tokens_content > 0)
+```
+
+Also, at this point we can create another categorical variable that will split texts by length. We will create 3 buckets: 
+- Short texts: 0-400 words 
+- Medium: 400-1000 words 
+- LongReads: over 1000 words 
+
+```{r message=FALSE, warning=FALSE, length_category}
+# create categorical variable for text length by cutting n_tokens_content into
+# three categories
+news$text_length <- cut(news$n_tokens_content, breaks = c(
+  0, 400, 1000, 9000),
+  labels = c("Short","Medium","LongRead"))
+summary(news$text_length)
+```
+
+## Videos and Links
+
+Summary: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, videos_summary}
+# show summary for number of links, number of imagees, number of videos and 
+# number of self-references 
+summary(select(news, c("num_hrefs", "num_self_hrefs",
+                       "num_imgs", "num_videos")))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, videos_links_images_plot}
+# create histogram for number of links
+links <- ggplot(aes(x=num_hrefs), data=news) +
+  geom_histogram(binwidth=2, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Number of links") +
+  labs(title="Number of Links") +
+  coord_cartesian(xlim=c(-0.5, quantile(news$num_hrefs,0.75)+
+                           1.5*IQR(news$num_hrefs)))
+
+# create histogram for number of self-references
+self_refs <- ggplot(aes(x=num_self_hrefs), data=news) +
+  geom_histogram(binwidth=1, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Number of self references") +
+  labs(title ="Number of Self References") + 
+  scale_x_continuous(breaks= pretty_breaks()) +
+  coord_cartesian(xlim=c(-0.5,
+                         quantile(news$num_self_hrefs,0.75)+
+                           1.5*IQR(news$num_self_hrefs)))
+
+# create histogram for number of images
+images <- ggplot(aes(x=num_imgs), data=news) +
+  geom_histogram(binwidth=1, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Number of images") + 
+  labs(title ="Number of Images") + 
+  coord_cartesian(xlim=c(-0.5,quantile(news$num_imgs,0.75)+
+                           1.5*IQR(news$num_imgs))) + 
+  scale_x_continuous(breaks= pretty_breaks())
+
+# create histogram for number of videos
+videos <- ggplot(aes(x=num_videos), data=news) +
+  geom_histogram(binwidth=1, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Number of videos") +
+  labs(title ="Number of Videos") +
+  coord_cartesian(xlim=c(-0.5,quantile(news$num_videos,0.75)+1.5*IQR(news$num_videos)))
+# plot all 4 histograms on 2x2 grid
+grid.arrange(links, self_refs, images, videos, ncol=2, nrow=2)
+```
+
+All of the above histograms are right-skewed - most values are concentrated on the left, so smaller values are more typical. We see that an average text has 10 links (including 3 self-references), 4 images an 1 video (but not necessarily all these at the same time).
+
+## Text Semantics
+
+### Subjectivity and Polarity 
+
+Polarity measures the emotions expressed in the text. In this dataset polarity values are in the continuous interval from -1 to 1 (inclusive). Closeness to -1 means that text has negative sentiment, while closness to +1 means positive sentiment. 
+
+Subjectivity simply measures how subjective is the text (i.e. if it expresses an opinion or states a fact). Subjectivity of 0 will indicate that the text simply states the facts, while subjectivity close to 1 will indicate that the text is an opinion rather than a bunch of facts. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, text_summary}
+# show summary for polarity and subjectivity of title and text
+summary(select(news, c("global_subjectivity", "global_sentiment_polarity",
+                       "title_subjectivity", "title_sentiment_polarity")))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, text_plot}
+# create histogram for text subjectivity
+glob_subj <- ggplot(aes(x=global_subjectivity), data=news) +
+  geom_histogram(bins=20, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Globar subjectivity value") +
+  labs(title="Global Subjectivity")
+
+# create histogram for text polarity
+glob_sent <- ggplot(aes(x=global_sentiment_polarity), data=news) +
+  geom_histogram(bins=20, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Global sentiment polarity value") +
+  labs(title ="Global Sentiment Polarity")
+
+# create histogram for title subjectivity
+title_subj <- ggplot(aes(x=title_subjectivity), data=news) +
+  geom_histogram(bins=20, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Title subjectivity value") +
+  labs(title ="Title subjectivity")
+
+# create histogram for title polarity
+title_sent <- ggplot(aes(x=title_sentiment_polarity), data=news) +
+  geom_histogram(bins=20, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Title polarity value") +
+  labs(title ="Title sentiment polarity")
+
+# plot all 4 histograms on 2x2 grid
+grid.arrange(glob_subj, title_subj, glob_sent, title_sent, ncol=2, nrow=2)
+```
+
+We can note that global subjectivity has normal distribution with the mean a bit shifted to the left from 0.5, so most of the texts tend to be neutrality. And if we look at the same characteristic of the title, we will notice that there is a very explicit peak at 0 that tells us that significant proportion (specifically - `r nrow(subset(news, news$title_subjectivity==0))/nrow(news)`) of all news titles simply state facts.
+
+The distribution for the text sentiment polarity looks normal with the mean shifted to the right from 0 which means that in general the newswriters prefer to be "positive". However, when it comes to naming the news, the authors mostly (`r nrow(subset(news, news$title_sentiment_polarity==0))/nrow(news)` of the titles) prefer neutral style.
+
+### Negative and Positive Words Rates
+
+Global rate of positive/negative words shows the percentage of positive/negative words in the whole text. For the following histogram I decided to combine them and plot the histogram for the proportion of non-neutral tokens in the text. 
+
+Rate of positive words shows the percentage of positive words among all non-neutral tokens. For this plot I took a subset of all the news the do contain any non-neutral words, because the rate of 0 can also mean that there are no non-neutral words at all.
+
+Numerica summary for global rate of non-neutral words and globalr rate of positive words: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, non_neutral_summary}
+# show summaris for rate of non-neutral words and rate of positive words 
+summary(news$global_rate_positive_words+news$global_rate_negative_words)
+summary(news$rate_positive_words)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, non_neutral_plot}
+# create histogram for rate of non-neutral words 
+non_neutral <- ggplot(aes(x=global_rate_positive_words+global_rate_negative_words), data=news) +
+  geom_histogram(bins=20, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Proportion of non-neutral words from the total") +
+  labs(title="Global Rate Non-Neutral words")
+
+# create histogram for rate of positive words 
+positive <- ggplot(aes(x=rate_positive_words), 
+             data=subset(news, 
+                         (news$global_rate_negative_words+
+                            news$global_rate_positive_words)>0)) +
+  geom_histogram(bins=20, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Positive/Non-Neutral words ratio") +
+  labs(title="Rate of Positive Words")
+
+# plot two histograms side by side
+grid.arrange(non_neutral, positive, ncol=2)
+```
+
+We can conclude that the texts mostly have low proportion of non-neutral words. And for the non-neutral tokens we can see that the histogram is left-skewed - most news are positive. It's interesting to note that there are much more news that have only positive and no negative words than news with just negative words (bars at 0 and at 1). 
+
+# Univariate Analysis
+
+## Dataset Structure
+
+Original dataset contains 39644 observations with 61 attributes. The attributes are float, integer and categorical. The distribution of the variable of interest (shares) is heavily skewed, so we had to remove the outliers.
+
+## Main Feature of Interest
+
+We're interested in exploring how the number of shares is relates to other variables.
+
+## Feature to Support the Feature of Interest
+
+- the subjectivity/polarity of title/text
+- the number/presece of images
+- the length of the text
+- the data channel 
+- the day of publication
+- the topic
+
+## Additional Features 
+
+I createed several variables during the first stage: 
+
+- weekday (decodes dummy variables)
+- channel (decodes dummy variables) 
+- other (to identify that the channel is other) 
+- topic' that stores the topic that has the highest value of membership according to LDA
+- text_length (categorical variabl that splits all texts into 3 categories: Short, Medium, LongRead)  
+- contains_images (indicates if the text contains images)
+
+## Unusual Distributions and Variable Transformations
+
+Most of the distributions are right-skewed, which seems quite logical. There are
+only two plots that show almost normal distribution: 
+
+- global subjectivity  
+- global sentiment polarity 
+- number of words in title
+
+I've also sclaed the distribution of the numer of shares using log scale, because 
+the data contains extreme values (outliers) that make it hard to see the shape.
+Also, it looks like for the goals of prediction we should better get rid of 
+outliers - they are extreme values that happen rarely so it doesn't make sense to
+analyse them together with other oservations.
+
+One interesting distribution is the distribution of the rate of positive words - it's left-skewed for the articles that contain any non-neutral tokens. Also the distributions of the title polarity and subjectivity have very clear peak at the "neutral position" which means that most titles are neutral (both in terms of subjectivity and polarity).
+
+# Bivariate EDA
+
+## Older => more popular?
+
+One natural question that one may ask this data is whether the news get more shares as more and more days pass? The smallest time interval between the publication data and data acquisition date (in days) is `r min(news$timedelta)`. So we're not comparing total novices to old monsters. Then it makes sense to plot the number of shares against the number of days elapsed:  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, time_shares_plot}
+# plot number of shares against timedelta
+ggplot(aes(x=timedelta, y = shares), data=news) +
+  geom_point(alpha = 0.5, size = 1, position = 'jitter', colour=MAIN_COLOUR) +
+  xlab("Days") +
+  ylab("Number of shares") + 
+  theme_linedraw()
+  
+```
+One might expect that as time goes by, the text will naturally will gain more shares, but the two variables look completely uncorrelated. And, indeed, the correlation coefficient is just `r cor(news$timedelta, news$shares, method='pearson')`
+
+We can explain it by the fact that new articles become outdated very fast, so if it's not shared intensively in the first 8 days, then it will not become significantly more popular no matter how long it stays on the site. But this is actually good for our analysis, because it justifies our measure of the popularity in the number of shares even if for the texts with very different publication dates.
+
+## Numeric Characteristics of the Texts
+
+Let's see if there is some relationship between the number of shares and numeric characteristics of the text, such as: 
+- title length
+- text length
+- number of links
+- number of images
+- number of videos
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, cor_numeric}
+# select only numeric characteristics of the text and number of shares 
+numeric_characteristics <- news[c('n_tokens_title',
+                        'n_tokens_content', "num_hrefs",
+                       "num_imgs", "num_videos", 
+                       'shares')]
+#round(cor(numeric_characteristics),4)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, plot_numeric}
+# create and show plot for all possible pairs of numeric characteristics and the number of shares 
+num_pairs <- ggpairs(numeric_characteristics, columnLabels = c('Title\nLength',
+                                                  'Text\nLength', 
+                                                  'Number of\nLinks',
+                                                  'Number of\nImages',
+                                                  'Number of\nVideos',
+                                                  'Shares'),
+         lower=list(continuous=wrap("points", colour=MAIN_COLOUR,alpha = 0.2, 
+                                    size = 1, position = 'jitter'))) + 
+  theme(text = element_text(size=8))
+num_pairs
+```
+
+It doesnt look like any of the variables are highly or even moderately related to the number of shares. The highest we see is the correlation of 0.0823 and 0.0585 and 0.0523 between the average number of shares per day and the number of references and images and text length.
+As for the other variables, we can see moderate correlation between: 
+- the number of references and the text length (0.408);
+- the number of images and the text length (0.367);
+- the number of images and the number of references (0.351);
+
+Here it makes sense to stop and think about the variables we're assessing. Maybe it's not the number of images that influence the number of shares, but it's their presence that can make a difference? Let's create a variable for that and call it "contains_images".
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, transformation_images}
+# create new variable that indicates whether the articles contains an image 
+news$contains_images <- news$num_imgs > 0
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, contains_images_plot}
+# create scatter plot for number of images against the number of shares 
+images_shares <- ggplot(aes(x=num_imgs, y = shares), data = news) + 
+  geom_point(colour=MAIN_COLOUR) +
+  scale_y_log10() +
+  ylab("Shares (Log Scale)") +
+  xlab("Number of Images") +
+  theme_linedraw()
+
+# create boxplot to compare the number of shares between article with and 
+# without images 
+images_shares_bin <- ggplot(aes(x=contains_images, y = shares), data=news) +
+  geom_boxplot(colour=MAIN_COLOUR) +
+  ylab("Shares (Log Scale)") +
+  xlab("Contains Images") +
+  scale_y_log10() +
+  theme_linedraw()
+grid.arrange(images_shares, images_shares_bin, ncol=2)
+```
+
+There is some difference but it's very weak - maybe it's more explicit in some specific categories? We should explore it in multivariate analysis section. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, contains_images_summary}
+# compare median for the number of shares for news with and without images 
+data.frame(news %>% group_by(contains_images) %>% 
+  summarize(median=median(shares)))
+```
+
+## Sematnic Characteristics of the Texts
+
+Next, we can check if there is any relationshiip between the number of shares and semantic characteristics of the text, such as:
+- global subjectivity 
+- global sentiment polarity 
+- global rate of positive words 
+- global rate of negative words 
+- rate of positive words 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, semantic_cor}
+# select features with semantic characteristics and the number of shares
+semantic_characteristics <- news[c('global_subjectivity',
+                                          "global_sentiment_polarity", 
+                                          'global_rate_positive_words', 
+                                          'global_rate_negative_words',
+                                          'rate_positive_words',
+                                          'shares')]
+#round(cor(semantic_characteristics),4)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, semantic_plot}
+# create and show plot for all possible pairs of semantic characteristics and the number of shares 
+sem_pairs <- ggpairs(semantic_characteristics, columnLabels = 
+                       c('Global\nSubjectivity',
+                         'Global Sentiment\nPolarity', 
+                         'Global Rate\nPositive Words', 
+                         'Global Rate\nNegative Words',
+                         'Rate Positive\nWords',
+                         'Shares'),
+                     lower=list(continuous=
+                                  wrap("points", colour=MAIN_COLOUR,
+                                       alpha = 0.2, size = 1, 
+                                       position = 'jitter'))) + 
+  theme(text=element_text(size=8))
+sem_pairs
+```
+
+Again, we can see that there are no strong correlations between the number of shares and other variables. There is some very very weak positive correlation between the number of shares and text subjectivity and global rate of positive words. 
+
+Note: we should be very careful with these attributes: we shouldn't use rate of positive words, global rate of positive words and global sentiment polarity if we ever decide to build a model because these three variable are correlated (which is quite logical).
+
+As a final step for text characteristics, let's see how the characteristics themselves are related to each other: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, num_sem_plot}
+# select most interesting numeric and semantic characteristics and plot 
+# them against each other
+num_sem_characteristics <- news[c('n_tokens_title',
+                        'n_tokens_content', 'num_imgs', 'num_hrefs', 
+                        'global_subjectivity','global_sentiment_polarity')]
+ggpairs(num_sem_characteristics, columnLabels = c('Title Length',
+                                                  'Text Length',
+                                                  'Number of\nImages',
+                                                  'Number of\nLinks',
+                                                  'Global Subjectivity',
+                                          "Global Sentiment\nPolarity"),
+        lower=list(continuous=wrap("points", colour=MAIN_COLOUR,alpha = 0.2, 
+                                   size = 1, position = 'jitter'))) + 
+  theme(text=element_text(size=8))
+```
+
+I expected to see some negative correlation between the number of links and subjectivity (links might be used to reference some facts to prove the point), but the result was the oppositte. One possible explanation is that at the same time links can also mean references to the image/video sources. Nevertheless, the correlation is too small to claim anything.
+
+## Shares by Weekday
+
+In the univariate analysis we noticed that weekend gets much fewer publications than work days. What about the shares of the news published on weekend? Do these news go unnoticed by the audience?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, shares_by_weekday}
+# create boxplot that shows statistics of shares by weekday 
+ggplot(aes(x=weekday, y = shares), data=news) +
+  geom_boxplot(colour=MAIN_COLOUR) + 
+  ylab("Shares") +
+  xlab("Weekday") +
+  theme_linedraw()
+```
+
+Quite the opposite! Even though there are less news published on weekend, those that published get significnatly more shares, especially on Saturday. It doesn't mean that one causes another, of course. One guess is that on weekend people have more time to actually read the news thoroughly and of course they first look at those that were just published. It's interesting to check if weekend news are longer than work day news:
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, length_by_weekday}
+# create boxplots for text length by weekday
+ggplot(aes(x=weekday, y = n_tokens_content), data=news) +
+  geom_boxplot(colour=MAIN_COLOUR) + 
+  ylab("Text Length") +
+  scale_y_log10() +
+  xlab("Weekday") +
+  theme_linedraw()
+```
+
+And indeed - it looks like weekends texts (especially those published on Saturday) are are slightly longer: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, length_by_weekday_summary}
+# show medians for each weekday
+data.frame(news %>% group_by(weekday) %>% 
+  summarize(median=median(n_tokens_content)))
+```
+
+### Shares by Channel
+
+The next question is - are people more likely to share the news published in specific channels? 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, shares_by_channel}
+# create boxplots for number of shares by channel
+ggplot(aes(x=channel, y = shares), data=news) +
+  geom_boxplot(colour=MAIN_COLOUR) +
+  ylab("Shares") +
+  scale_y_log10() +
+  theme_linedraw() 
+```
+
+It looks like Entertainment and World news are the least shareable, while Social Media news are the most shareable. 
+
+### Shares by Topic
+
+Let's check if we can see some pattern in the number of shares by topic:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, shares_by_topic}
+# create boxplots fo number of shares by topic
+ggplot(aes(x=topic, y = shares), data=news) +
+  geom_boxplot(colour=MAIN_COLOUR) +
+  ylab("Shares") +
+  scale_y_log10() +
+  xlab("Topic") + 
+  guides(colour=FALSE)
+```
+
+Looks like topics 1 and 5 are shared slightly more often than topics: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, shares_by_topic_summary}
+# show medians for number of shares by topic 
+data.frame(news %>% group_by(topic) %>%
+  summarise(median = median(shares)))
+```
+
+But what do these topics mean? 
+
+### What Do Topics Mean? 
+
+Since we don't have access to the original data scraping script, we can only guess what the topics are about. One way to get some idea of what the topics are about is to see how these anonymous topics distributed across channels: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, topics_channels}
+# create barplots to show news counts by topic by channel
+ggplot(aes(x=topic, fill=topic), 
+       data = news) + 
+  geom_bar() +
+  theme_linedraw() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.x=element_blank()) +
+  xlab("Topic") + 
+  ylab("Count") +
+  facet_wrap(~channel)
+```
+
+And indeed we can make some conclusions based on these barplots: 
+
+- topic 1 is related to business 
+- topic 5 is related to technology
+- topic 3 is related to world news 
+- topic 2 is related to entertainment
+
+Taking into account our previous visualisation, we can now say that news about business and technology are better candidates for popular news than anything else. 
+
+## Number of Links, Number of Images vs Number of Shares
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, length_vs_shares}
+# plot shares against number of links as scatterplot
+shares_hrefs <- ggplot(aes(x=num_hrefs, y=shares), data=news) +
+  geom_point(alpha = 0.2, size = 3, position = 'jitter', colour=MAIN_COLOUR) +
+  xlab("Number of Links") +
+  ylab("Shares (Log Scale)") + 
+  scale_y_log10() +
+  theme_linedraw()
+
+# plot shares against the number of images as scatterplot
+shares_images <- ggplot(aes(x=num_imgs, y=shares), data=news) +
+  geom_point(alpha = 0.2, size = 3, position = 'jitter', colour=MAIN_COLOUR) +
+  xlab("Number of Images") +
+  ylab("Shares (Log Scale)") + 
+  theme_linedraw() + 
+  scale_y_log10() 
+grid.arrange(shares_hrefs, shares_images, ncol=2)
+```
+
+The correlation is very weak and is barely identifiable on the plot, so we should not rely on it.
+
+## Being Objective Doesn't Make You Popular
+
+When first approaching this dataset, I expected that there will be some moderate correlation between the subjectivity and the number of shares. On one hand, factual news are more reliable and so "safer" to share. On the other hand, more subjective news are more appealing. So maybe these two thing balance each other out instead? Hence, the low value of the correlation coefficient - `r cor(news$global_subjectivity, news$shares)`.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, subj_plot}
+# plot shares against global subjectivity 
+ggplot(aes(x=global_subjectivity, y = shares), 
+       data = news) + 
+  geom_point(alpha = 0.2, size = 2, position = 'jitter', colour=MAIN_COLOUR) +
+  theme_linedraw() +
+  xlab("Subjectivity") + 
+  ylab("Shares")
+```
+
+The plot can serve as an example of absolute patternlessness. I don't think we should build any models based on that.
+
+# Bivariate Analysis
+
+## Observed Relationships
+
+It looks like our variable of interest (the number of shares) doesn't have any strong relationship with any of other variables. Correlation values are very low and if we want to build a model, then maybe it will make sense to cluster the dataset somehow and build a separate model for each cluster, but this is out of the scope of this work.
+
+That said, there are some weak, but rather interesting relationships. We noticed that: 
+- news published on weekend get more shares; 
+- text length has barely noticeable positive effect on the number of shares; 
+- news published in Social Media channel are shared more often, but at the same time news on topics related to Technology and Business are more shared (looks like we have some sort of Simpson's paradox here!);
+
+## Relationships Between Features
+
+One of the most interesting relationships is the relationship between the weekday and text length. We've discovered that texts published on weekends get more shares and are longer! At the same time, there are fewer texts published on weekend and there is almost negligible correlation between the text length and the number of shares. 
+
+## Strongest Relationship? 
+
+The strongest relationship was among the variables that are innately connected. These are global rate of positive/negative words and rate of positive/negative words as well as subjectivity and polarity. So, as it has been said, we should be very careful if we decide to build a model with this variables. For example, positive words often indicate some emotion that increases the subjectivity of the text, as well as polarity, so we shouldn't be surprised to see positive correlation between them.
+
+The most noticeable impact on the number of shares is from day of publication and channel. As for continuous variables, the strongest relationship (although still very weak) with the average number of shares per day was shown by:
+
+- number of links;
+- number of images;
+- global subjectivity.
+
+# Multivariate EDA
+
+## Shares by Text Length: With Images vs Without Images
+
+Previously, we noted that presence of images doesn't influence the number of shares that much. Let's check if that's true for all texts independently of their length: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, length_shares_images}
+# create boxplot fo number of shares for news with/without images by text length
+ggplot(aes(x=contains_images, y=shares, color=contains_images), data=news) +
+  geom_boxplot() +
+  scale_y_log10() +
+  facet_wrap(~text_length) +
+  theme_linedraw() +
+  xlab('Contains Images?') +
+  ylab('Number of Shares') +
+  guides(colour=FALSE)
+```
+
+Looks like the presence of images has positive impact on the number of shares for long reads. Also, it's interesting that the median for the number of shares is lower for long reads than for medium and short texts, so long articles without images are the least shareable. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, length_shares_images_summary}
+# Show medians and IQRs for news of different lengths with/without images 
+data.frame(subset(news) %>% group_by(contains_images,text_length) %>%   summarize(median=median(shares),
+            lower_fence = quantile(shares,0.25),
+            upper_fence = quantile(shares,0.75)))
+```
+
+## Shares by topic by text length
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, shares_topics_length}
+# create boxplots for the number of shares by topic by text length
+ggplot(aes(x=topic, y=shares, color=topic), data=news) +
+  geom_boxplot() +
+  scale_y_log10() +
+  facet_wrap(~text_length) +
+  theme_linedraw() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.x=element_blank()) 
+```
+
+Here we can notice that long reads on topic 1 (Business) get the most shares. The trend doesn't hold for short texts: most popular short texts are on topics 4 and 5 (Technology). Both observations seem quite logical: long reviews in business topics and short technical news (e.g. about some new gadget) are what seems worth sharing.
+
+## How are business and tech news affected by the presence of images?
+
+```{r}
+ggplot(aes(x=topic, y=shares, color=contains_images), data=
+         subset(news,news$topic=="Topic 1" | topic=="Topic 5")) +
+  geom_boxplot() +
+  scale_y_log10() +
+  facet_wrap(~text_length) +
+  theme_linedraw() + 
+  theme(axis.text.x=element_text(size=8, angle=45)) +
+  ylab("Number of Shares") +
+  xlab("Topic") +
+  guides(color=guide_legend(title="Contains Images?"))
+```
+
+We can see that news related to Technology are less affected by the absence of images, while for business long reads it looks like an important feature.
+
+## Subjectivity vs Shares by Channel: Weekends and Workdays
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, subj_shares_topic}
+news$is_weekend <- news$Saturday | news$Sunday
+ggplot(aes(x=global_subjectivity, y = shares, color=is_weekend), 
+       data = subset(news, news$channel !='Other')) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  theme_linedraw() +
+  xlab("Number of Images") + 
+  ylab("Shares (Log Scale)") +
+  facet_wrap(~channel) +
+  guides(color=guide_legend(title="Weekend?"))
+```
+
+The scatter plots looks quite similar to each other (i.e. show no correlation), but we may notice a few things. No matter what the channel is, the subjectiviy of the text doesn't influence it much as well as other numeric characteristics. And we can again see that news published on weekened are shifted up while news shared on workdays are more concentrated on the bottom. 
+
+# Multivariate Analysis
+
+## Observed Relationships
+
+One interesting finding is that presence of images has more impact on long text rather than on shorter ones. However, it's quite logical if you think about it - it's easier to read long text and get involved if it has visuals. Also, we identified that business long reads is the top shared category that strengthened our previous observation that tech and business news are the most shared. 
+
+## Inter-Feature Interactions
+
+I tried various combinations, but it doesn't look that there are more connections. The most interesting connections have already been reported in bivariate analysis section. Further exploration didn't give anything.
+
+### Possible Models
+
+I decided not to build a model, because it doesn't look like any of the variables have really significan and measurable impact on the outcome variables (i.e. we can't predict based only on 0/1 columns). This work was important to understand that numeric and basic semantic characteristics are not enough to predict popularity.
+
+------
+
+# Final Plots and Summary
+
+## Plot One: News are Negatively Skewed in a Positive Way!
+
+```{r echo=FALSE, Plot_One}
+non_neutral_summary <- ggplot(aes(x=global_rate_positive_words+global_rate_negative_words), 
+             data=news) +
+  geom_histogram(bins=20, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Proportion of non-neutral words from the total") +
+  ylab("News counts") +
+  labs(title="Global Rate Non-Neutral words")
+positive_summary <- ggplot(aes(x=rate_positive_words), 
+             data=subset(news, 
+                         (news$global_rate_negative_words+
+                            news$global_rate_positive_words)>0)) +
+  geom_histogram(bins=20, fill=FILL_COLOUR, color=MAIN_COLOUR)+
+  theme_linedraw() +
+  xlab("Positive/Non-Neutral words ratio") +
+  ylab("News counts")+
+  labs(title="Rate of Positive Words")
+grid.arrange(non_neutral_summary, positive_summary, nrow=2)
+```
+
+I live in Eastern Europe and based on the news I see every day here I expected quite the opposite distribution: i.e., I expected that news will be left-skewed in terms of rate of non-neutral words, while the ratio of positive words to non-neutral words will be right skewed, because it's simply easier to draw one's attention with bad news. But it's actually quite the opposite: the second histogram shows that in fact, the distribution of positive words rations is left-skewed. However, we don't know if it's because there is some latent advertising that boosts the rate of positive words or the authors are just nice. 
+
+## Plot Two: Weekends Get Fewer Publications, But More Shares
+
+```{r echo=FALSE, Plot_Two}
+weekday_counts_summary <- ggplot(aes(x = weekday), data=news) +
+  geom_bar(fill=FILL_COLOUR, color=MAIN_COLOUR) + 
+  theme_linedraw() + 
+  xlab("Weekday") +
+  ylab("Number of Publications") +
+  labs(title="Numaber of Publications by Weekday")
+
+weekday_shares_summary <- ggplot(aes(x=weekday, y = shares, color=weekday), data=news) +
+  geom_boxplot() + 
+  ylab("Number of Shares") +
+  xlab("Weekday") +
+  labs(title="Numaber of Publications by Weekday")
+grid.arrange(weekday_counts_summary, weekday_shares_summary, nrow=2)
+```
+
+Another thing I found interesting is that there are significantly fewer news published on weekend, but these news are shared the most - especially on Saturdays. Maybe when the news article is shared on weekend it spreads faster because people have more free time to actually read (rather than just look at the title). 
+
+## Plot Three: Top News Are Business Longreads with Images
+
+```{r echo=FALSE, Plot_Three}
+shares_by_topic <- ggplot(aes(x=topic, y=shares, color=topic), 
+             data=subset(news, text_length=="LongRead")) +
+  geom_boxplot() +
+  scale_y_log10() +
+  facet_wrap(~text_length) +
+  theme_linedraw() + 
+  theme(axis.text.x=element_text(size=8, angle=45, hjust=1)) +
+  xlab("Topic") + 
+  ylab("Number of Shares") + 
+  labs(title="Number of Shares by Topic\nfor Long Reads") +
+  guides(color=guide_legend(title="Topic"))
+
+bus_shares_by_img <- ggplot(aes(x = contains_images, y=shares, color=contains_images), 
+             data=subset(news,
+                         news$topic=="Topic 1" & text_length=="LongRead")) +
+  geom_boxplot() +
+  scale_y_log10() +
+  facet_wrap(~text_length) +
+  theme_linedraw() + 
+  theme(axis.text.x=element_text(size=8, angle=45, hjust=1)) + 
+  xlab("Contains Images") + 
+  ylab("Number of Shares") + 
+  labs(title="Number of Shares for\nBusiness LongReads:\nWith vs Without Images") + 
+  guides(color=guide_legend(title="Contains Images?"))
+grid.arrange(shares_by_topic, bus_shares_by_img, ncol=2)
+```
+
+This is maybe the strongest relationship I was able to find. Compared to other groups, business long reads show the best performance (we've identified that Topic 1 is related to Business). Also, if we look closer at business long reads that contain and don't contain images, we will see that the difference is quite dramatic, and this is the only category where this pattern is so explicit. 
+
+------
+
+# Reflection
+
+During this exploration, I realised one very important thing. We all know about the GIGO principle. I think it also applies to data in most cases. And this refers not only to the way the data was collected and the way the measurements were taken. It's also about collecting the right data. Based on the exploration we've done it seems like it doesn't make much sense to predict news popularity based on numeric characteristics, even if they measure some semantic features (although very simple) as well.  
+It doesn't matter how positive and how good the text is - if it's not interesting, it will not get popular. Also this exploration shows how important it is to be able to look at the actual data and if possible - at the source of the data. It will help to detect potential errors in the dataset - like when we discovered that zero-length texts just were not processed correctly. 
+
+I had to create several helper variables converting from binary to categorical variables and from continuous to categorical. One of these transformations (presence of images rather than number of images) was very fruitful - we've discovered that presence of images is very important for business long reads. 
+
+I learnt the hard way that you shouldn't stick top much to the varibales you're given - instead, you should play with them, transform and sometimes, if necessary, admit that it still doesn't work. The hardest thing in this EDA was to admit that there is no correlation between the number of shares and numeric attributes, no matter how desperately I want to see them. Many times I was about to claim there was a relationship, but in the end decided to simply reflect on the fact of its absence. When you're new to data analysis, you expect correlations everywhere, so this was an introduction to real life. 
+
+The future research can be improved significantly by getting more data about the news bits we have and maybe changing the metric we use to measure popularity. For startesrs, I would have added a variable that will measure the number of shares in the first week and take the ratio from the total number of shares so that we can distinct between viral news and quality timeless materials. Another idea is to extract the keywords that describe the subject of each news bit and check the popularity of these words with google trends - this might provide some information for predicting popularity. Also, it looks reasonable to categorise the texts by their type: e.g. "survey", "picture gallery", "scandal", "historical investigation" and so on and then explore popularity within these categories. 
+
+# References
+
+- [Online News Popularity Dataset](#'http://archive.ics.uci.edu/ml/datasets/Online+News+Popularity')
+- [Chaning the Order of Levels of a Factor](#'http://www.cookbook-r.com/Manipulating_data/Changing_the_order_of_levels_of_a_factor/')
+- [Difference between Subjectivity and Polarity](#'https://www.quora.com/What-is-the-difference-between-Polarity-and-Subjectivity')
+- [What is good explanation of Dirichlet Allocation?](#'https://www.quora.com/What-is-a-good-explanation-of-Latent-Dirichlet-Allocation')
+- [Converting data between wide and long format](#'http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/')
+- [Rename columns in R](#'http://rprogramming.net/rename-columns-in-r/')
+- [Plot some variables against many others](#'https://drsimonj.svbtle.com/plot-some-variables-against-many-others')
+- [How to change legend in ggplot](#'https://stackoverflow.com/questions/14622421/how-to-change-legend-title-in-ggplot#14622513')
