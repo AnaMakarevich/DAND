@@ -17,6 +17,7 @@ SELECT gd.year, gd.avg_temp as global_temp
 FROM global_data gd  
 
 ### Check the datasets
+
 When working with SQL I noticed already that there were missing values in the dataset with city level measurements. The missing values were for four consequtive years: 1946 - 1949. Also the earliest year with the data for the global averages was 1750.
 
 
@@ -26,9 +27,6 @@ import numpy as np
 kiev_temp = pd.read_csv("kiev_temp.csv")
 kiev_temp[kiev_temp.kiev_temp.isna()]
 ```
-
-
-
 
 <table>
   <thead>
@@ -94,7 +92,7 @@ df.head()
 
 
 <div>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -145,6 +143,7 @@ cd.avg_temp as kiev_avg
 FROM global_data gd
 LEFT JOIN city_data cd ON gd.year = cd.year
 WHERE cd.city = 'Kiev'
+
 ## Step 2: Moving average 
 
 There are 264 observations now both for Kiev and for global averages. So let's average values for 10-year intervals. 
@@ -181,23 +180,7 @@ kiev_ma.head()
 ```
 
 
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -231,9 +214,6 @@ kiev_ma.head()
     </tr>
   </tbody>
 </table>
-</div>
-
-
 
 ### Pandas way
 
@@ -249,24 +229,7 @@ df_ma = df.rolling(N,N).mean()[N-1:]
 df_ma.head()
 ```
 
-
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -307,8 +270,6 @@ df_ma.head()
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 Compare manual way and pandas way: 
@@ -318,23 +279,6 @@ Compare manual way and pandas way:
 pd.merge(df_ma[['kiev_temp']], kiev_ma, left_index=True, right_index=True).head()
 ```
 
-
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -376,9 +320,6 @@ pd.merge(df_ma[['kiev_temp']], kiev_ma, left_index=True, right_index=True).head(
     </tr>
   </tbody>
 </table>
-</div>
-
-
 
 ## Step 3: Moving averages plot
 My key motivation for visualisation was to present the data in the clearest way possible. I chose Matplotlib because of its flexibility. 
@@ -408,6 +349,7 @@ plot_averages(df_ma, "Moving Averages", ['Kiev', 'Global'], ['teal','coral'], ['
 
 
 ## Step 4: Observations (for Kiev and Global temperature)
+
 1. The first observation that catches the eye is that it's definitely getting warmer. We see steady growth both in Ukraine and globally. 
 2. There was a significant cooldown somewhere in the first quarter of the 19th century which was also the global trend. 
 3. Based on these two graphs we can see that they are definitely correlated and that it might be the case that we will see somewhat similar shape if we take other cities. 
