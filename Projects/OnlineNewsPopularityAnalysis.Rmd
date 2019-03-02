@@ -3,6 +3,8 @@ title: "Online News Popularity Analysis"
 author: "Anastasia Makarevich"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
+  md_document:
+    variant: markdown_github
   html_document:
     # theme of html document
     # theme of code highlight                                 
@@ -51,7 +53,9 @@ FILL_COLOUR <- "whitesmoke"
 news_raw <- read.csv('OnlineNewsPopularity/OnlineNewsPopularity.csv')
 ```
 
-In this work I will be analysing popularity of online news, specifically - what features can possibly help us to predict the number of shares? The source dataset can be downloaded from UCI repository: [see here](#'http://archive.ics.uci.edu/ml/datasets/Online+News+Popularity').
+In this work I will be analysing popularity of online news, specifically - what features can possibly help us to predict the number of shares? 
+
+The source dataset can be downloaded from UCI repository: [see here](http://archive.ics.uci.edu/ml/datasets/Online+News+Popularity).
 
 This dataset contains information about the articles published on Mashable.com during a two-year period. Popularity is measured by the number of shares since the publication date. An article is considered popular if it exceed the threshold of 1400 shares (as suggested by the dataset creators). 
 
@@ -276,7 +280,7 @@ head(subset(no_text, no_text$num_videos==0 &
                             no_text$num_hrefs==0)$url, 10)
 ```
 
-And, surprisingly, they still get a lot of shares! There must be something wrong. Let's check one news article from this list - [http://mashable.com/2013/01/23/fitness-gadget-gym-cost-comparison/](#'http://mashable.com/2013/01/23/fitness-gadget-gym-cost-comparison/'). Turns out, it contains a lot text and a lof images! We can conclude that these observations might be corrupted! Do those with no text really have no text then? Let's see:
+And, surprisingly, they still get a lot of shares! There must be something wrong. Let's check one news article from this list - [http://mashable.com/2013/01/23/fitness-gadget-gym-cost-comparison/](http://mashable.com/2013/01/23/fitness-gadget-gym-cost-comparison/). Turns out, it contains a lot text and a lof images! We can conclude that these observations might be corrupted! Do those with no text really have no text then? Let's see:
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, no_text}
 # show first article that has at least one video or at least one image or 
@@ -946,10 +950,10 @@ weekday_counts_summary <- ggplot(aes(x = weekday), data=news) +
   labs(title="Numaber of Publications by Weekday")
 
 weekday_shares_summary <- ggplot(aes(x=weekday, y = shares, color=weekday), data=news) +
-  geom_boxplot() + 
+  geom_boxplot(colour=MAIN_COLOUR) + 
   ylab("Number of Shares") +
   xlab("Weekday") +
-  labs(title="Numaber of Publications by Weekday")
+  labs(title="Numaber of Publications by Weekday") 
 grid.arrange(weekday_counts_summary, weekday_shares_summary, nrow=2)
 ```
 
@@ -967,8 +971,8 @@ shares_by_topic <- ggplot(aes(x=topic, y=shares, color=topic),
   theme(axis.text.x=element_text(size=8, angle=45, hjust=1)) +
   xlab("Topic") + 
   ylab("Number of Shares") + 
-  labs(title="Number of Shares by Topic\nfor Long Reads") +
-  guides(color=guide_legend(title="Topic"))
+  labs(title="Number of Shares by Topic\nfor Long Reads\n") +
+  guides(color=FALSE)
 
 bus_shares_by_img <- ggplot(aes(x = contains_images, y=shares, color=contains_images), 
              data=subset(news,
@@ -978,10 +982,10 @@ bus_shares_by_img <- ggplot(aes(x = contains_images, y=shares, color=contains_im
   facet_wrap(~text_length) +
   theme_linedraw() + 
   theme(axis.text.x=element_text(size=8, angle=45, hjust=1)) + 
-  xlab("Contains Images") + 
+  xlab("Contains Images?") + 
   ylab("Number of Shares") + 
   labs(title="Number of Shares for\nBusiness LongReads:\nWith vs Without Images") + 
-  guides(color=guide_legend(title="Contains Images?"))
+  guides(color= FALSE)
 grid.arrange(shares_by_topic, bus_shares_by_img, ncol=2)
 ```
 
@@ -1002,11 +1006,11 @@ The future research can be improved significantly by getting more data about the
 
 # References
 
-- [Online News Popularity Dataset](#'http://archive.ics.uci.edu/ml/datasets/Online+News+Popularity')
-- [Chaning the Order of Levels of a Factor](#'http://www.cookbook-r.com/Manipulating_data/Changing_the_order_of_levels_of_a_factor/')
-- [Difference between Subjectivity and Polarity](#'https://www.quora.com/What-is-the-difference-between-Polarity-and-Subjectivity')
-- [What is good explanation of Dirichlet Allocation?](#'https://www.quora.com/What-is-a-good-explanation-of-Latent-Dirichlet-Allocation')
-- [Converting data between wide and long format](#'http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/')
-- [Rename columns in R](#'http://rprogramming.net/rename-columns-in-r/')
-- [Plot some variables against many others](#'https://drsimonj.svbtle.com/plot-some-variables-against-many-others')
-- [How to change legend in ggplot](#'https://stackoverflow.com/questions/14622421/how-to-change-legend-title-in-ggplot#14622513')
+- [Online News Popularity Dataset](http://archive.ics.uci.edu/ml/datasets/Online+News+Popularity)
+- [Chaning the Order of Levels of a Factor](http://www.cookbook-r.com/Manipulating_data/Changing_the_order_of_levels_of_a_factor/)
+- [Difference between Subjectivity and Polarity](https://www.quora.com/What-is-the-difference-between-Polarity-and-Subjectivity)
+- [What is good explanation of Dirichlet Allocation?](https://www.quora.com/What-is-a-good-explanation-of-Latent-Dirichlet-Allocation)
+- [Converting data between wide and long format](http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/)
+- [Rename columns in R](http://rprogramming.net/rename-columns-in-r/)
+- [Plot some variables against many others](https://drsimonj.svbtle.com/plot-some-variables-against-many-others)
+- [How to change legend in ggplot](https://stackoverflow.com/questions/14622421/how-to-change-legend-title-in-ggplot#14622513)
