@@ -43,21 +43,7 @@ df.describe()
 
 
 
-<div>
-<style>
-    .dataframe thead tr:only-child th {
-        text-align: right;
-    }
-
-    .dataframe thead th {
-        text-align: left;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -108,9 +94,6 @@ df.describe()
     </tr>
   </tbody>
 </table>
-</div>
-
-
 
 We can also check the median: 
 
@@ -217,21 +200,7 @@ df[(df.Incongruent < low) | (df.Incongruent > high)]
 
 
 
-<div>
-<style>
-    .dataframe thead tr:only-child th {
-        text-align: right;
-    }
-
-    .dataframe thead th {
-        text-align: left;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -252,8 +221,6 @@ df[(df.Incongruent < low) | (df.Incongruent > high)]
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 One guess is that maybe the participants were distracted during the test? Or maybe these two participants are particularly slow? But they were not outliers in the first test - with congruent colours. In this case it's unclear whether they should be excluded from the dataset or not, but we should just know that they are present. So I will create a copy of the dataset without outliers. 
@@ -403,10 +370,3 @@ It's often the case that the leaves point left, while moving right and so on, an
 from subprocess import call
 call(['python', '-m', 'nbconvert', 'TheStroopEffect.ipynb'])
 ```
-
-
-
-
-    0
-
-
