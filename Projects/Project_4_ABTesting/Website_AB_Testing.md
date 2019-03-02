@@ -44,21 +44,7 @@ df.head()
 
 
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -112,8 +98,6 @@ df.head()
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 b. Use the below cell to find the number of rows in the dataset.
@@ -251,21 +235,8 @@ rep_user_df
 
 
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
 
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -295,8 +266,6 @@ rep_user_df
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 d. Remove **one** of the rows with a duplicate **user_id**, but keep your dataframe as **df2**.
@@ -622,23 +591,7 @@ df3.head()
 ```
 
 
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -704,9 +657,6 @@ df3.head()
     </tr>
   </tbody>
 </table>
-</div>
-
-
 
 c. Use **statsmodels** to import your regression model.  Instantiate the model, and fit the model using the two columns you created in part **b.** to predict whether or not an individual converts.
 
@@ -819,21 +769,8 @@ df4.head()
 
 
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
 
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -923,8 +860,6 @@ df4.head()
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 We can check for multicollinearity by calculating variance inflaction factor. In general, if it's above 5, then it's a sign of collinearity. 
@@ -941,21 +876,7 @@ vifs
 
 
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
+<table>
   <thead>
     <tr style="text-align: right;">
       <th></th>
@@ -986,8 +907,6 @@ vifs
     </tr>
   </tbody>
 </table>
-</div>
-
 
 
 So, we're okay with this selection of features. It's also interesting to note that if we add the third country, our VIF will just blow up - to infinity! Also we can illustrate why we need to remove one column with the country while having an intercept. We want the matrix rank to be equal to the number of columns. However, if we don't remove one variable we will have a rank equal to number of columns - 1. So we will pass 5 columns and calculate the rank: 
@@ -1333,10 +1252,3 @@ And we finally have some results! **TWO** variable with p-values less than 0.05:
 from subprocess import call
 call(['python', '-m', 'nbconvert', 'Website_AB_Testing.ipynb'])
 ```
-
-
-
-
-    0
-
-
