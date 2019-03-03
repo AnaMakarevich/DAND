@@ -1,8 +1,10 @@
-# Data Analyst Nanodegree Repo
+# Data Analyst Nanodegree Projects and Lecture Notes
 
 This repository is for lecture notes, projects and cheatsheets for Udacity's Data Analyst Nanodegree. 
 
-# Projects Overview: 
+## Projects Overview
+
+Note about formats: .MD is a natural format for GitHub and it's lighter. However, LaTeX expressions are not rendered in .MD format - see original .ipynb versions for these projects. 
 
 Project ID | Project Folder | MD Version |  Original Format |Description
 ------------ | ------------ |  ------------ | ------------ | ------------
