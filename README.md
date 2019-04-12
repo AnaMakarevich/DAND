@@ -2,6 +2,9 @@
 
 This repository is for lecture notes, projects and cheatsheets for Udacity's Data Analyst Nanodegree. 
 
+Program review can be found [here](https://github.com/AnaMakarevich/DAND/blob/master/dand_review.md).
+Certificate can be found [here](https://github.com/AnaMakarevich/DAND/blob/master/DAND_certificate.pdf).
+ 
 ## Projects Overview
 
 Note about formats: .MD is a natural format for GitHub and it's lighter. However, LaTeX expressions are not rendered in .MD format - see original .ipynb versions for these projects. 
